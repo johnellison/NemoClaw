@@ -405,6 +405,75 @@ EOF
     });
   });
 
+  describe("harden_resource_limits", () => {
+    // Shim `ulimit` (a bash builtin) by overriding it with a function inside the
+    // sourced body. The function records each invocation so we can assert both
+    // the nproc (#809) and nofile (#4527) caps are applied, soft-before-hard.
+    it("applies nproc and nofile soft+hard limits in order", () => {
+      const { stdout } = runWithLib(
+        [
+          // Override the ulimit builtin to record args and succeed.
+          "ulimit() { printf 'ulimit %s\\n' \"$*\"; return 0; }",
+          "harden_resource_limits",
+        ].join("\n"),
+      );
+      const calls = stdout.split("\n").filter((line) => line.startsWith("ulimit "));
+      expect(calls).toEqual([
+        "ulimit -Su 512",
+        "ulimit -Hu 512",
+        "ulimit -Sn 65536",
+        "ulimit -Hn 65536",
+      ]);
+    });
+
+    it("is best-effort: exits 0 and warns when ulimit fails", () => {
+      // Shim ulimit to always fail. The function must not abort (best-effort)
+      // and must emit a [SECURITY] warning for each of the four limits.
+      const { stdout } = runWithLib(
+        [
+          "ulimit() { return 1; }",
+          "harden_resource_limits 2>&1",
+          'echo "HARDEN_OK"',
+        ].join("\n"),
+      );
+      expect(stdout).toContain("HARDEN_OK");
+      expect(stdout).toContain("Could not set soft nproc limit");
+      expect(stdout).toContain("Could not set hard nproc limit");
+      expect(stdout).toContain("Could not set soft nofile limit");
+      expect(stdout).toContain("Could not set hard nofile limit");
+    });
+  });
+
+  describe("entrypoints call harden_resource_limits", () => {
+    // Both entrypoints must delegate RLIMIT hardening to the shared helper and
+    // must no longer carry the pre-#4527 raw inline `ulimit -Su 512` block.
+    for (const rel of ["../scripts/nemoclaw-start.sh", "../agents/hermes/start.sh"]) {
+      it(`${rel} calls harden_resource_limits and has no raw inline nproc block`, () => {
+        const src = readFileSync(join(import.meta.dirname, rel), "utf-8");
+        expect(src).toContain("harden_resource_limits");
+        expect(src).not.toContain("ulimit -Su 512");
+        expect(src).not.toContain("ulimit -Hu 512");
+      });
+    }
+
+    // SECURITY (#4527): the RLIMIT caps are only unraisable if they are set
+    // while still root PID 1, BEFORE drop_capabilities (capsh) and the
+    // setpriv/gosu step-down. A refactor that moved the harden call after the
+    // privilege drop would turn it into dead code (cap set as the unprivileged
+    // agent, hard limit no longer lowered) while every other test stayed green.
+    // Pin the ordering so that regression is caught.
+    for (const rel of ["../scripts/nemoclaw-start.sh", "../agents/hermes/start.sh"]) {
+      it(`${rel} calls harden_resource_limits before drop_capabilities`, () => {
+        const src = readFileSync(join(import.meta.dirname, rel), "utf-8");
+        const hardenIdx = src.indexOf("harden_resource_limits");
+        const dropIdx = src.indexOf("drop_capabilities");
+        expect(hardenIdx).toBeGreaterThanOrEqual(0);
+        expect(dropIdx).toBeGreaterThanOrEqual(0);
+        expect(hardenIdx).toBeLessThan(dropIdx);
+      });
+    }
+  });
+
   describe("init_step_down_prefixes", () => {
     it("falls back to gosu when setpriv is unavailable", () => {
       // Source-time init runs before our test body, so re-run it with a
@@ -570,7 +639,7 @@ EOF
     it("nemoclaw-start.sh sources sandbox-init.sh", () => {
       const src = readFileSync(join(import.meta.dirname, "../scripts/nemoclaw-start.sh"), "utf-8");
       const start = src.indexOf("_SANDBOX_INIT=");
-      const end = src.indexOf("# Harden: limit process count", start);
+      const end = src.indexOf("# Harden RLIMITs", start);
       if (start === -1 || end === -1 || end <= start) {
         throw new Error("Expected sandbox-init source block in scripts/nemoclaw-start.sh");
       }
