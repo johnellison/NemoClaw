@@ -619,6 +619,18 @@ ARG NEMOCLAW_WEB_SEARCH_ENABLED=0
 # never baked into the image. Requires the `apify-web` OpenShell policy for
 # runtime egress to api.apify.com.
 ARG NEMOCLAW_APIFY_ENABLED=0
+# Non-secret flag: set to "1" to wire Firecrawl web scraping as an MCP server
+# (config.mcpServers.firecrawl in generate-openclaw-config.mts). Firecrawl has
+# no first-class OpenClaw plugin. FIRECRAWL_API_KEY is injected at runtime via
+# openshell:resolve:env, never baked into the image. Requires the firecrawl-web
+# OpenShell policy for egress to api.firecrawl.dev.
+#
+# ACTIVATION IS NOT YET COMPLETE: enabling this writes the mcpServers entry, but
+# the firecrawl-mcp binary must also be present on the sandbox PATH and OpenShell
+# must resolve the placeholder inside mcpServers env. Both need build-time
+# validation (install user/prefix, PATH, placeholder resolution) before flipping
+# this on. Left at 0 until validated against a live build.
+ARG NEMOCLAW_FIRECRAWL_ENABLED=0
 ARG NEMOCLAW_OPENCLAW_OTEL=0
 ARG NEMOCLAW_OPENCLAW_OTEL_ENDPOINT=http://host.openshell.internal:4318
 ARG NEMOCLAW_OPENCLAW_OTEL_SERVICE_NAME=openclaw-gateway
@@ -648,6 +660,7 @@ ENV NEMOCLAW_MODEL=${NEMOCLAW_MODEL} \
     NEMOCLAW_PROXY_PORT=${NEMOCLAW_PROXY_PORT} \
     NEMOCLAW_WEB_SEARCH_ENABLED=${NEMOCLAW_WEB_SEARCH_ENABLED} \
     NEMOCLAW_APIFY_ENABLED=${NEMOCLAW_APIFY_ENABLED} \
+    NEMOCLAW_FIRECRAWL_ENABLED=${NEMOCLAW_FIRECRAWL_ENABLED} \
     NEMOCLAW_OPENCLAW_OTEL=${NEMOCLAW_OPENCLAW_OTEL} \
     NEMOCLAW_OPENCLAW_OTEL_ENDPOINT=${NEMOCLAW_OPENCLAW_OTEL_ENDPOINT} \
     NEMOCLAW_OPENCLAW_OTEL_SERVICE_NAME=${NEMOCLAW_OPENCLAW_OTEL_SERVICE_NAME} \

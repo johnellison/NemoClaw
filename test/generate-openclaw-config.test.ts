@@ -834,6 +834,20 @@ describe("generate-openclaw-config.mts: config generation", () => {
     expect(config.plugins?.entries?.["apify-openclaw-plugin"]).toBeUndefined();
   });
 
+  it("wires the firecrawl MCP server when NEMOCLAW_FIRECRAWL_ENABLED is '1'", () => {
+    const config = runConfigScript({ NEMOCLAW_FIRECRAWL_ENABLED: "1" });
+    // Firecrawl has no OpenClaw plugin; it is an MCP server (stdio shape).
+    expect(config.mcpServers?.firecrawl).toEqual({
+      command: "firecrawl-mcp",
+      env: { FIRECRAWL_API_KEY: "openshell:resolve:env:FIRECRAWL_API_KEY" },
+    });
+  });
+
+  it("omits mcpServers when NEMOCLAW_FIRECRAWL_ENABLED is not set", () => {
+    const config = runConfigScript();
+    expect(config.mcpServers).toBeUndefined();
+  });
+
   it("propagates agent timeout", () => {
     const config = runConfigScript({ NEMOCLAW_AGENT_TIMEOUT: "300" });
     expect(config.agents.defaults.timeoutSeconds).toBe(300);

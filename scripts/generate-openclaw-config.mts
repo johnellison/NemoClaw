@@ -984,6 +984,25 @@ export function buildConfig(env: Env = process.env): JsonObject {
     };
   }
 
+  if (env.NEMOCLAW_FIRECRAWL_ENABLED === "1") {
+    // Firecrawl web scraping. Firecrawl has no first-class OpenClaw plugin, so
+    // it is wired as an MCP server (OpenClaw reads config.mcpServers — stdio
+    // entries take command/args/env). The firecrawl-mcp binary is installed at
+    // build time by the Dockerfile; the API key is injected at runtime via
+    // openshell:resolve:env (never baked into the image), and egress to
+    // api.firecrawl.dev is authorized by the firecrawl-web OpenShell policy.
+    //
+    // NOTE: off by default and pending live build validation of two things the
+    // build env can't confirm offline: (1) that OpenShell resolves the
+    // openshell:resolve:env placeholder inside mcpServers env values, and (2)
+    // that firecrawl-mcp launches on the sandbox PATH. See REMEDIATION notes.
+    const mcpServers = (config.mcpServers ??= {}) as JsonObject;
+    mcpServers.firecrawl = {
+      command: "firecrawl-mcp",
+      env: { FIRECRAWL_API_KEY: "openshell:resolve:env:FIRECRAWL_API_KEY" },
+    };
+  }
+
   return config;
 }
 
