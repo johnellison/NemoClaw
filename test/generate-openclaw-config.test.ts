@@ -784,7 +784,7 @@ describe("generate-openclaw-config.mts: config generation", () => {
 
   it("enables native OpenClaw Tool Search by default", () => {
     const config = runConfigScript();
-    expect(config.tools?.toolSearch).toBe(true);
+    expect(config.tools?.toolSearch).toEqual({ enabled: true });
   });
 
   it("enables keyless web_fetch through the trusted env proxy by default", () => {
@@ -798,7 +798,7 @@ describe("generate-openclaw-config.mts: config generation", () => {
 
   it("enables web search when env is '1' using the current plugin schema", () => {
     const config = runConfigScript({ NEMOCLAW_WEB_SEARCH_ENABLED: "1" });
-    expect(config.tools?.toolSearch).toBe(true);
+    expect(config.tools?.toolSearch).toEqual({ enabled: true });
     // #5266: apiKey lives under plugins.entries.brave.config (not inline on
     // tools.web.search) so build-time `openclaw plugins install` validates.
     expect(config.tools?.web?.search).toEqual({ enabled: true, provider: "brave" });
@@ -811,13 +811,13 @@ describe("generate-openclaw-config.mts: config generation", () => {
 
   it("omits web search when env is not set", () => {
     const config = runConfigScript();
-    expect(config.tools?.toolSearch).toBe(true);
+    expect(config.tools?.toolSearch).toEqual({ enabled: true });
     expect(config.tools?.web?.search).toBeUndefined();
   });
 
   it("enables the apify plugin when NEMOCLAW_APIFY_ENABLED is '1'", () => {
     const config = runConfigScript({ NEMOCLAW_APIFY_ENABLED: "1" });
-    expect(config.tools?.toolSearch).toBe(true);
+    expect(config.tools?.toolSearch).toEqual({ enabled: true });
     // The provider-owned apiKey lives under plugins.entries.<plugin>.config
     // (same shape as brave); the runtime resolves the openshell placeholder.
     expect(config.plugins?.entries?.["apify-openclaw-plugin"]).toEqual({
@@ -1409,7 +1409,7 @@ describe("generate-openclaw-config.mts: config generation", () => {
       expect(providerConfig.models[0].compat).toEqual({ supportsStore: false });
       expect(config.plugins.entries["nemoclaw-kimi-inference-compat"]).toBeUndefined();
       expect(config.plugins.load).toBeUndefined();
-      expect(config.tools?.toolSearch).toBe(true);
+      expect(config.tools?.toolSearch).toEqual({ enabled: true });
     }
   }, 20_000);
 
@@ -1450,7 +1450,7 @@ describe("generate-openclaw-config.mts: config generation", () => {
         ...envCase,
       });
 
-      expect(config.tools?.toolSearch).toBe(true);
+      expect(config.tools?.toolSearch).toEqual({ enabled: true });
     }
   }, 20_000);
 

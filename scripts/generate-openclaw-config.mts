@@ -818,7 +818,14 @@ export function buildConfig(env: Env = process.env): JsonObject {
       openclawToolOverrides,
     );
   }
-  const openclawTools: JsonObject = { toolSearch: true, ...openclawToolOverrides };
+  // Use the structured Tool Search surface (search/describe/call), not the
+  // boolean `true` code-bridge form. The code bridge (`tool_search_code`) runs
+  // in a code-eval sandbox that strips Node globals incl. fetch, so the
+  // agent's openclaw.tools.call() bridge fails with "fetch failed" for any
+  // network tool (web_search, web_fetch, apify) — see the SETUP runbook. The
+  // object form keeps the token-saving catalog but dispatches tool calls
+  // directly. A per-model setup may still override this with a boolean.
+  const openclawTools: JsonObject = { toolSearch: { enabled: true }, ...openclawToolOverrides };
 
   if (providerKey === "ollama" || providerKey === "ollama-local") {
     inferenceCompat.supportsUsageInStreaming ??= true;
