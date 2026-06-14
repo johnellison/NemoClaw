@@ -32,6 +32,7 @@ export type PrepareSandboxDockerfilePatchInput = {
   provider: string | null;
   preferredInferenceApi: string | null;
   webSearchConfig: WebSearchConfig | null;
+  apifyEnabled?: boolean;
   hermesToolGateways: string[];
   sandboxGpuConfig: SandboxGpuConfig;
   log?: (message: string) => void;
@@ -91,6 +92,7 @@ export async function prepareSandboxDockerfilePatch({
   provider,
   preferredInferenceApi,
   webSearchConfig,
+  apifyEnabled = false,
   hermesToolGateways,
   sandboxGpuConfig,
   log = console.log,
@@ -149,6 +151,7 @@ export async function prepareSandboxDockerfilePatch({
     darwinVmCompat,
     null,
     hermesToolGateways,
+    apifyEnabled,
   );
 
   return { buildId, resolvedBaseImage: resolved };

@@ -211,6 +211,43 @@ describe("dockerfile patch helpers", () => {
     assert.deepEqual(readMessagingPlanArg(patched), messagingPlan);
   });
 
+  it("rewrites the Apify ARG to 1 when apifyEnabled is true and 0 otherwise", () => {
+    const baseArgs = [
+      "ARG NEMOCLAW_MODEL=old",
+      "ARG NEMOCLAW_PROVIDER_KEY=old",
+      "ARG NEMOCLAW_PRIMARY_MODEL_REF=old",
+      "ARG CHAT_UI_URL=old",
+      "ARG NEMOCLAW_INFERENCE_BASE_URL=old",
+      "ARG NEMOCLAW_INFERENCE_API=old",
+      "ARG NEMOCLAW_INFERENCE_COMPAT_B64=old",
+      "ARG NEMOCLAW_BUILD_ID=old",
+      "ARG NEMOCLAW_DARWIN_VM_COMPAT=0",
+      "ARG NEMOCLAW_APIFY_ENABLED=0",
+    ].join("\n");
+
+    const enabledPath = dockerfileWith(baseArgs);
+    // apifyEnabled is the 12th positional argument.
+    patchStagedDockerfile(
+      enabledPath,
+      "m",
+      "https://chat.example",
+      "build-1",
+      null,
+      null,
+      null,
+      null,
+      false,
+      null,
+      [],
+      true,
+    );
+    expect(fs.readFileSync(enabledPath, "utf-8")).toContain("ARG NEMOCLAW_APIFY_ENABLED=1");
+
+    const disabledPath = dockerfileWith(baseArgs);
+    patchStagedDockerfile(disabledPath, "m", "https://chat.example", "build-1");
+    expect(fs.readFileSync(disabledPath, "utf-8")).toContain("ARG NEMOCLAW_APIFY_ENABLED=0");
+  });
+
   it("uses the shared sandbox inference mapping", () => {
     const dockerfilePath = dockerfileWith(
       [

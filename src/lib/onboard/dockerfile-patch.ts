@@ -98,6 +98,7 @@ export function patchStagedDockerfile(
   darwinVmCompat = false,
   inferenceBaseUrlOverride: string | null = null,
   hermesToolGateways: string[] = [],
+  apifyEnabled = false,
 ): void {
   const sanitizedModel = sanitizeDockerArg(model);
   const sandboxInference = getSandboxInferenceConfig(
@@ -253,6 +254,13 @@ export function patchStagedDockerfile(
   dockerfile = dockerfile.replace(
     /^ARG NEMOCLAW_WEB_SEARCH_ENABLED=.*$/m,
     `ARG NEMOCLAW_WEB_SEARCH_ENABLED=${sanitizeDockerArg(webSearchConfig ? "1" : "0")}`,
+  );
+  // Bake the Apify social-scraping plugin into the image when enabled. If the
+  // ARG is absent (e.g. a custom Dockerfile), this is a silent no-op — same
+  // contract as the web-search ARG above.
+  dockerfile = dockerfile.replace(
+    /^ARG NEMOCLAW_APIFY_ENABLED=.*$/m,
+    `ARG NEMOCLAW_APIFY_ENABLED=${sanitizeDockerArg(apifyEnabled ? "1" : "0")}`,
   );
   for (const envKey of [
     "NEMOCLAW_OPENCLAW_OTEL",

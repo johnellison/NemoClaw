@@ -2,9 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it, vi } from "vitest";
-
-import type { SandboxGpuConfig } from "./sandbox-gpu-mode";
 import { prepareSandboxDockerfilePatch } from "./sandbox-dockerfile-patch-flow";
+import type { SandboxGpuConfig } from "./sandbox-gpu-mode";
 
 const sandboxGpuConfig: SandboxGpuConfig = {
   mode: "auto",
@@ -74,7 +73,41 @@ describe("prepareSandboxDockerfilePatch", () => {
       false,
       null,
       ["github"],
+      false,
     );
+  });
+
+  it("forwards apifyEnabled to patchStagedDockerfile", async () => {
+    const patchStagedDockerfile = vi.fn();
+    await prepareSandboxDockerfilePatch({
+      agent: null,
+      fromDockerfile: null,
+      sandboxBaseImage: "ghcr.io/nvidia/nemoclaw/sandbox-base",
+      sandboxBaseTag: "latest",
+      stagedDockerfile: "/tmp/Dockerfile",
+      model: "model-a",
+      chatUiUrl: "http://127.0.0.1:7000",
+      provider: "nvidia-prod",
+      preferredInferenceApi: "chat",
+      webSearchConfig: null,
+      apifyEnabled: true,
+      hermesToolGateways: [],
+      sandboxGpuConfig,
+      log: vi.fn(),
+      deps: {
+        isLinuxDockerDriverGatewayEnabled: vi.fn(() => true),
+        pullAndResolveBaseImageDigest: vi.fn(() => ({
+          digest: "sha256:abcdef0123456789",
+          ref: "ghcr.io/nvidia/nemoclaw/sandbox-base@sha256:abcdef0123456789",
+        })),
+        enforceDockerGpuPatchPreserveNetwork: vi.fn(async () => false),
+        patchStagedDockerfile,
+        now: () => 12345,
+      },
+    });
+
+    // apifyEnabled is the final (12th) positional argument.
+    expect(patchStagedDockerfile.mock.calls[0]?.[11]).toBe(true);
   });
 
   it("skips base-image resolution for agent default Dockerfiles", async () => {

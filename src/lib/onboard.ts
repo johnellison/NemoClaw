@@ -2968,6 +2968,13 @@ async function createSandbox(
   sandboxBuildPatchConfig.prepareSandboxBuildPatchConfig({
     configuredMessagingChannels,
   });
+  // Bake the Apify social-scraping plugin into the image when an Apify API key
+  // is configured (saved credential or env). Mirrors web search's
+  // non-interactive auto-enable; the key itself is never baked in — it is
+  // injected at runtime via the openshell:resolve:env placeholder.
+  const apifyEnabled = Boolean(
+    getCredential("APIFY_API_KEY") || normalizeCredentialValue(process.env.APIFY_API_KEY),
+  );
   const { buildId } = await sandboxDockerfilePatchFlow.prepareSandboxDockerfilePatch({
     agent,
     fromDockerfile,
@@ -2979,6 +2986,7 @@ async function createSandbox(
     provider,
     preferredInferenceApi,
     webSearchConfig,
+    apifyEnabled,
     hermesToolGateways,
     sandboxGpuConfig: effectiveSandboxGpuConfig,
     log: console.log,
