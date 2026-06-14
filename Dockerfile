@@ -611,6 +611,14 @@ ARG NEMOCLAW_PROXY_PORT=3128
 # The actual API key is injected at runtime via openshell:resolve:env, never
 # baked into the image.
 ARG NEMOCLAW_WEB_SEARCH_ENABLED=0
+# Non-secret flag: set to "1" to bake in the Apify plugin
+# (@apify/apify-openclaw-plugin, version-pinned in the install step below).
+# Controls whether the `apify` tool block is written to openclaw.json and the
+# plugin is installed at build time (root-owned, before the npm offline
+# lockdown). APIFY_API_KEY is injected at runtime via openshell:resolve:env,
+# never baked into the image. Requires the `apify-web` OpenShell policy for
+# runtime egress to api.apify.com.
+ARG NEMOCLAW_APIFY_ENABLED=0
 ARG NEMOCLAW_OPENCLAW_OTEL=0
 ARG NEMOCLAW_OPENCLAW_OTEL_ENDPOINT=http://host.openshell.internal:4318
 ARG NEMOCLAW_OPENCLAW_OTEL_SERVICE_NAME=openclaw-gateway
@@ -639,6 +647,7 @@ ENV NEMOCLAW_MODEL=${NEMOCLAW_MODEL} \
     NEMOCLAW_PROXY_HOST=${NEMOCLAW_PROXY_HOST} \
     NEMOCLAW_PROXY_PORT=${NEMOCLAW_PROXY_PORT} \
     NEMOCLAW_WEB_SEARCH_ENABLED=${NEMOCLAW_WEB_SEARCH_ENABLED} \
+    NEMOCLAW_APIFY_ENABLED=${NEMOCLAW_APIFY_ENABLED} \
     NEMOCLAW_OPENCLAW_OTEL=${NEMOCLAW_OPENCLAW_OTEL} \
     NEMOCLAW_OPENCLAW_OTEL_ENDPOINT=${NEMOCLAW_OPENCLAW_OTEL_ENDPOINT} \
     NEMOCLAW_OPENCLAW_OTEL_SERVICE_NAME=${NEMOCLAW_OPENCLAW_OTEL_SERVICE_NAME} \
@@ -682,6 +691,10 @@ RUN set -eu; \
         BRAVE_API_KEY=openshell:resolve:env:BRAVE_API_KEY openclaw doctor --fix --non-interactive; \
     elif [ "$NEMOCLAW_OPENCLAW_OTEL" = "1" ]; then \
         openclaw doctor --fix --non-interactive; \
+    fi; \
+    if [ "${NEMOCLAW_APIFY_ENABLED:-0}" = "1" ]; then \
+        openclaw plugins install "npm:@apify/apify-openclaw-plugin@0.5.1" --pin; \
+        APIFY_API_KEY=openshell:resolve:env:APIFY_API_KEY openclaw doctor --fix --non-interactive; \
     fi
 
 # hadolint ignore=DL3059,DL4006

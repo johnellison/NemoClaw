@@ -815,6 +815,25 @@ describe("generate-openclaw-config.mts: config generation", () => {
     expect(config.tools?.web?.search).toBeUndefined();
   });
 
+  it("enables the apify plugin when NEMOCLAW_APIFY_ENABLED is '1'", () => {
+    const config = runConfigScript({ NEMOCLAW_APIFY_ENABLED: "1" });
+    expect(config.tools?.toolSearch).toBe(true);
+    // The provider-owned apiKey lives under plugins.entries.<plugin>.config
+    // (same shape as brave); the runtime resolves the openshell placeholder.
+    expect(config.plugins?.entries?.["apify-openclaw-plugin"]).toEqual({
+      enabled: true,
+      config: {
+        apiKey: "openshell:resolve:env:APIFY_API_KEY",
+        baseUrl: "https://api.apify.com",
+      },
+    });
+  });
+
+  it("omits the apify plugin when NEMOCLAW_APIFY_ENABLED is not set", () => {
+    const config = runConfigScript();
+    expect(config.plugins?.entries?.["apify-openclaw-plugin"]).toBeUndefined();
+  });
+
   it("propagates agent timeout", () => {
     const config = runConfigScript({ NEMOCLAW_AGENT_TIMEOUT: "300" });
     expect(config.agents.defaults.timeoutSeconds).toBe(300);

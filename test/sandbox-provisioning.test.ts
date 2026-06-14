@@ -303,6 +303,44 @@ describe("sandbox provisioning: non-messaging OpenClaw plugins", () => {
       fs.rmSync(tmp, { recursive: true, force: true });
     }
   });
+
+  it("installs the version-pinned Apify plugin and preserves its placeholder during doctor", () => {
+    const dockerfile = fs.readFileSync(DOCKERFILE, "utf-8");
+    const command = dockerRunCommandBetween(
+      dockerfile,
+      "# Install non-messaging OpenClaw plugins",
+      "# hadolint ignore=DL3059,DL4006\nRUN node --experimental-strip-types /src/lib/messaging/applier/build/messaging-build-applier.mts --agent openclaw --phase agent-install",
+    );
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "nemoclaw-apify-plugin-install-"));
+    try {
+      const { result, calls } = runLoggedDockerShell(
+        command,
+        tmp,
+        [
+          [
+            "openclaw() {",
+            '  printf "%s|APIFY_API_KEY=%s\\n" "$*" "${APIFY_API_KEY:-}" >> "$call_log"',
+            "}",
+          ].join("\n"),
+        ],
+        {
+          // Apify is independent of web search and OTEL, and its plugin pin is
+          // not tied to OPENCLAW_VERSION (third-party version line).
+          NEMOCLAW_OPENCLAW_OTEL: "0",
+          NEMOCLAW_WEB_SEARCH_ENABLED: "0",
+          NEMOCLAW_APIFY_ENABLED: "1",
+        },
+      );
+
+      expect(result.status, `stderr: ${result.stderr}`).toBe(0);
+      expect(calls.trim().split("\n")).toEqual([
+        "plugins install npm:@apify/apify-openclaw-plugin@0.5.1 --pin|APIFY_API_KEY=",
+        "doctor --fix --non-interactive|APIFY_API_KEY=openshell:resolve:env:APIFY_API_KEY",
+      ]);
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
 });
 
 function dockerfileEnvDirectives(text: string): string[] {

@@ -965,6 +965,25 @@ export function buildConfig(env: Env = process.env): JsonObject {
     };
   }
 
+  if (env.NEMOCLAW_APIFY_ENABLED === "1") {
+    // @apify/apify-openclaw-plugin (manifest id "apify-openclaw-plugin")
+    // registers the `apify` tool — Apify Actors, including social/profile
+    // scrapers — discoverable through tool search (tools.toolSearch is on by
+    // default above). The plugin is installed and --pinned at build time by the
+    // Dockerfile so the runtime never reaches the scope-restricted npm registry
+    // for it. The API key is injected at runtime via openshell:resolve:env
+    // (never baked into the image), and egress to api.apify.com is authorized
+    // by the apify-web OpenShell policy preset. Mirrors the brave block above:
+    // the provider-owned apiKey lives under plugins.entries.<plugin>.config.
+    config.plugins.entries["apify-openclaw-plugin"] = {
+      enabled: true,
+      config: {
+        apiKey: "openshell:resolve:env:APIFY_API_KEY",
+        baseUrl: "https://api.apify.com",
+      },
+    };
+  }
+
   return config;
 }
 
